@@ -501,18 +501,29 @@ let lastSyncTime = null;     // ISO string del último sync exitoso
 let syncTimer = null;        // debounce timer
 
 function sanitizarActividades(){
-  // Corregir visita corrupta (timestamp) y sistema/costo inválidos
   A=A.map(a=>{
-    let visita=a.visita;
-    // Si visita es un número grande (timestamp ms) o NaN, calcular desde mes
-    if(typeof visita!=="number"||isNaN(visita)||visita>100){
-      visita=typeof a.mes==="number"?a.mes+1:1;
+    // Visita: siempre número 1-12, calculado desde mes si está corrupto
+    let visita=parseInt(a.visita);
+    if(isNaN(visita)||visita<1||visita>12){
+      visita=typeof a.mes==="number"&&a.mes>=0&&a.mes<=11?a.mes+1:1;
     }
-    let costo=Number(a.costo);
-    if(isNaN(costo)||costo<=0)costo=Math.round(2350000/63); // costo base por ítem
-    let sistema=a.sistema||a.categoria||"";
-    if(!sistema||sistema==="undefined")sistema=a.categoria||"General";
-    return{...a,visita,costo,sistema,categoria:sistema};
+    // Costo: número positivo
+    let costo=parseFloat(a.costo);
+    if(isNaN(costo)||costo<=0)costo=Math.round(2350000/63);
+    // Sistema: string válido
+    let sistema=String(a.sistema||a.categoria||"");
+    if(!sistema||sistema==="undefined"||sistema==="null")sistema=String(a.categoria||"General");
+    // Título: string válido
+    let titulo=String(a.titulo||"");
+    if(!titulo||titulo==="undefined")titulo="Actividad sin título";
+    // Fecha: string válido yyyy-MM-dd
+    let fecha=String(a.fecha||"");
+    if(!fecha||fecha==="undefined"||fecha==="null"){
+      const y=new Date().getFullYear();
+      const m=String(visita).padStart(2,"0");
+      fecha=`${y}-${m}-15`;
+    }
+    return{...a,visita,costo,sistema,categoria:sistema,titulo,fecha};
   });
 }
 
