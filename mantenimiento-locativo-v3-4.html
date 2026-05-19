@@ -146,14 +146,14 @@ textarea.fi2{min-height:65px;resize:vertical;}
   <div id="abar"><div style="color:var(--red);font-size:10px;font-weight:700">⚠ ALERTAS</div><div id="amsg" style="color:#DC2626;font-size:12px;margin-top:1px"></div></div>
   <div style="padding:10px 14px;border-top:1px solid var(--border)">
     <!-- Sheets sync status -->
-    <div id="sheets-status" style="display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:8px;cursor:pointer" onclick="abrirConfigSheets()">
+    <button onclick="abrirConfigSheets()" style="width:100%;display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:left" id="sheets-status">
       <span id="sync-dot"></span>
       <div style="flex:1;min-width:0">
         <div style="font-size:10px;font-weight:700;color:var(--text3)">GOOGLE SHEETS</div>
         <div id="sync-status-text" style="font-size:11px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sin configurar</div>
       </div>
       <span style="font-size:10px;color:var(--text4)">⚙</span>
-    </div>
+    </button>
     <button onclick="exportarTodo()" style="width:100%;background:#F0FDF4;color:#059669;border:1px solid #86EFAC;border-radius:7px;padding:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">💾 Exportar JSON</button>
     <label style="width:100%;display:block;margin-top:5px">
       <span style="display:block;text-align:center;background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:7px;padding:8px;font-size:11px;font-weight:700;cursor:pointer">📂 Importar JSON</span>
