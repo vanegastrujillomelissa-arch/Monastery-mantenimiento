@@ -651,10 +651,34 @@ async function mergeDesdSheets(silencioso){
     if(!json.ok||!json.data)throw new Error("Sin datos");
     const remoto=json.data;
     if(remoto.actividades&&remoto.actividades.length){
-      const fotosLocales={};
-      A.forEach(a=>{fotosLocales[a.id]=a.fotos||[];});
-      A=remoto.actividades.map(ra=>({fotos:fotosLocales[ra.id]||[],...ra}));
-      NID=Math.max(...A.map(a=>Number(a.id)||0))+1;
+      // Validar que los datos vienen limpios antes de aplicar
+      // Si visita es un número grande (timestamp) los datos están corruptos
+      const primeraAct=remoto.actividades[0];
+      const visitaCorrupta=primeraAct&&(typeof primeraAct.visita==="number"&&primeraAct.visita>100);
+      const sistemaCorrupto=primeraAct&&(!primeraAct.sistema||primeraAct.sistema==="undefined");
+      if(!visitaCorrupta&&!sistemaCorrupto){
+        const fotosLocales={};
+        A.forEach(a=>{fotosLocales[a.id]=a.fotos||[];});
+        // Solo actualizar estado y VoBo — no sobreescribir visita/sistema/costo del plan base
+        A=A.map(local=>{
+          const remota=remoto.actividades.find(ra=>Number(ra.id)===Number(local.id));
+          if(!remota)return local;
+          return{
+            ...local,
+            estado:remota.estado||local.estado,
+            voboEstado:remota.voboEstado||local.voboEstado,
+            voboNombreTerreno:remota.voboNombreTerreno||local.voboNombreTerreno,
+            voboFechaTerreno:remota.voboFechaTerreno||local.voboFechaTerreno,
+            voboNombreMonastery:remota.voboNombreMonastery||local.voboNombreMonastery,
+            voboFechaMonastery:remota.voboFechaMonastery||local.voboFechaMonastery,
+            fecha:remota.fecha||local.fecha,
+            notas:remota.notas||local.notas,
+          };
+        });
+        NID=Math.max(...A.map(a=>Number(a.id)||0))+1;
+      }else{
+        console.warn("Pull: datos de actividades corruptos en Sheets — ignorando");
+      }
     }
     if(remoto.hallazgos&&remoto.hallazgos.length){
       const fotosHL={};
