@@ -1765,10 +1765,36 @@ function init(){
     setTimeout(()=>mergeDesdSheets(true),1500);   // pull silencioso al abrir
     setTimeout(()=>sincronizarConSheets(),4000);  // push inicial después
   }
-  setInterval(guardarLocal,60000);
-  // Reintento de sync cada 5 minutos si hay cambios pendientes
+    setInterval(guardarLocal,60000);
   setInterval(()=>{if(syncPending&&GAS_URL&&!isSyncing)sincronizarConSheets();},300000);
+  // Detectar datos corruptos y mostrar botón de emergencia
+  detectarCorrupcion();
 }
+
+function detectarCorrupcion(){
+  const corrupto=A.length===0||(A.length>0&&(!A[0].titulo||A[0].titulo==="undefined"));
+  if(corrupto){
+    const div=document.createElement("div");
+    div.id="emergency-reset";
+    div.style.cssText="position:fixed;top:0;left:0;right:0;z-index:9999;background:#DC2626;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;font-family:inherit;font-size:13px;font-weight:700";
+    div.innerHTML=`<span>⚠️ Se detectaron datos corruptos en la app</span>
+      <button onclick="emergencyReset()" style="background:#fff;color:#DC2626;border:none;border-radius:7px;padding:8px 18px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px">🗑 Limpiar y restaurar ahora</button>`;
+    document.body.appendChild(div);
+  }
+}
+
+function emergencyReset(){
+  localStorage.removeItem("monastery_v2");
+  localStorage.removeItem("monastery_last_sync");
+  const banner=document.getElementById("emergency-reset");
+  if(banner)banner.remove();
+  A=genActs();H=[];CL={};SCHED={};COT=[];ACTAS=[];VISITAS_EXTRA={};
+  NID=A.length+1;NHID=1;NCID=1;NAID=1;
+  guardarLocal();
+  go("dashboard");
+  showBanner("✅ Datos restaurados correctamente","#059669",3000);
+}
+
 init();
 </script>
 </body>
