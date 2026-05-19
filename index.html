@@ -1632,7 +1632,7 @@ function abrirResetDatos(){
       <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">¿Qué quieres resetear?</div>
       <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;cursor:pointer">
         <input type="checkbox" id="rst-act" checked style="accent-color:#DC2626;width:15px;height:15px">
-        <span style="font-size:13px">Actividades y cronograma</span>
+        <span style="font-size:13px">Actividades personalizadas y fechas programadas <span style="color:var(--text4);font-size:11px">(el plan base se regenera automáticamente)</span></span>
       </label>
       <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;cursor:pointer">
         <input type="checkbox" id="rst-hl" checked style="accent-color:#DC2626;width:15px;height:15px">
@@ -1651,9 +1651,11 @@ function abrirResetDatos(){
         <span style="font-size:13px">Checklist de visitas</span>
       </label>
     </div>
-    <div style="background:#FFFBF7;border:1px solid #FED7AA;border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#92400E">
-      💡 El Google Sheet <strong>no</strong> se modifica — solo se limpian los datos locales del navegador.
-      Para limpiar el Sheet también, hazlo manualmente desde Google Sheets.
+    <div style="background:#FFFBF7;border:1px solid #FED7AA;border-radius:8px;padding:10px 13px;margin-bottom:6px;font-size:12px;color:#92400E">
+      💡 El plan base de <strong>312 actividades preventivas</strong> (26 tiendas × 12 meses) se regenera automáticamente — no se pierde. Solo se borran los datos ingresados manualmente.
+    </div>
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#1D4ED8">
+      📊 El Google Sheet <strong>no</strong> se modifica — solo se limpian los datos locales del navegador. Para limpiar el Sheet también, hazlo manualmente.
     </div>
     <div class="mbtns">
       <button class="bcn" onclick="closeMo()">Cancelar</button>
@@ -1686,8 +1688,14 @@ function confirmarReset(){
   localStorage.removeItem("monastery_last_sync");
   guardarLocal();
   closeMo();
+  // Limpiar filtros de actividades para que todo sea visible tras el reset
+  const fb=document.getElementById("fbusq");if(fb)fb.value="";
+  const fs=document.getElementById("fsede");if(fs)fs.value="";
+  const ft=document.getElementById("ftipo");if(ft)ft.value="";
+  const fe=document.getElementById("fest");if(fe)fe.value="";
+  const fc=document.getElementById("fcat");if(fc)fc.value="";
   go("dashboard");
-  showBanner("✅ Datos reseteados correctamente","#059669",3000);
+  showBanner("✅ Datos reseteados. El plan base de actividades fue regenerado.","#059669",4000);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
