@@ -388,14 +388,14 @@ textarea.fi2{min-height:65px;resize:vertical;}
 </div>
 
 <!-- MODAL PRINCIPAL -->
-<div class="mo" id="modal" onclick="closeMo(event)" style="display:none;position:fixed;inset:0;background:#00000033;z-index:1000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)">
+<div class="mo" id="modal" onclick="closeMo(event)" style="position:fixed;inset:0;background:#00000033;z-index:1000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)">
   <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:26px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px #0000002A" onclick="event.stopPropagation()">
     <div id="mocont"></div>
   </div>
 </div>
 
 <!-- MODAL FIRMA -->
-<div class="mo" id="modal-firma" onclick="closeFirma(event)" style="display:none;position:fixed;inset:0;background:#00000044;z-index:1001;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)">
+<div class="mo" id="modal-firma" onclick="closeFirma(event)" style="position:fixed;inset:0;background:#00000044;z-index:1001;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)">
   <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;max-width:560px;width:100%;box-shadow:0 20px 60px #0000003A" onclick="event.stopPropagation()">
     <div id="firma-cont"></div>
   </div>
@@ -1002,6 +1002,18 @@ function renderDash(){
   const dbprox=document.getElementById("db-prox");if(dbprox)dbprox.innerHTML=px.length?`<div class="stit">PRÓXIMAS VISITAS (14 DÍAS)</div>`+px.map(x=>{const s=sd(x.sede);const d=dt(x.fecha);return `<div class="card" style="border-left-color:var(--accent)" onclick="go('checklist')"><div style="color:var(--accent);font-size:11px;font-weight:800;min-width:46px">${d===0?"HOY":"en "+d+"d"}</div><div style="flex:1"><div style="font-weight:700;font-size:13px">${s?.n}</div><div style="color:var(--text3);font-size:11px">${s?.c} · Visita ${x.visita}/12</div></div></div>`;}).join(""):"";
   const dbsedes=document.getElementById("db-sedes");if(dbsedes)dbsedes.innerHTML=SEDES.map(s=>{const sa=a.filter(x=>x.sede===s.id);const c2=sa.filter(x=>x.estado==="Completado").length;const v2=sa.filter(x=>x.estado==="Vencido").length;const p=sa.length?Math.round(c2/sa.length*100):0;const col=v2>0?"#DC2626":p>=80?"#059669":p>=40?"#D97706":"#2563EB";return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 15px;cursor:pointer" onclick="document.getElementById('portalsede').value=${s.id};go('portal')"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><div><div style="font-weight:700;font-size:12px">${s.n}</div><div style="color:var(--text4);font-size:11px">${s.c}</div></div><div style="font-weight:800;font-size:15px;color:${col}">${p}%</div></div><div style="background:var(--bg3);border-radius:5px;height:4px;overflow:hidden"><div style="background:${col};height:4px;width:${p}%"></div></div></div>`;}).join("");
   actualizarBadgeNotif();
+  // Botón flotante de acción rápida para técnico en campo
+  let fab=document.getElementById("fab-hallazgo");
+  if(!fab){
+    fab=document.createElement("button");
+    fab.id="fab-hallazgo";
+    fab.innerHTML="📸 Hallazgo";
+    fab.onclick=()=>{go("hallazgos");setTimeout(openHLForm,200);};
+    fab.style.cssText="position:fixed;bottom:24px;right:24px;z-index:500;background:var(--accent);color:#fff;border:none;border-radius:50px;padding:14px 22px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px #C9853A44;display:none";
+    document.body.appendChild(fab);
+  }
+  // Mostrar solo en pantallas móviles
+  fab.style.display=window.innerWidth<=768?"flex":"none";
 }
 // ── KPI ───────────────────────────────────────────────────────────────────────
 function renderKPI(){
@@ -1325,24 +1337,85 @@ function renderHL(){
 }
 function openHLForm(){
   window._hlFotos=[];
-  document.getElementById("mocont").innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mtit" style="margin:0">Registrar hallazgo</div><button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)" onclick="closeMo()">✕</button></div>
+  const mesActual=HOY.getMonth();
+  document.getElementById("mocont").innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="mtit" style="margin:0">📸 Registrar hallazgo</div><button style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)" onclick="closeMo()">✕</button></div>
     <div class="ff"><label class="fl">Tienda</label><select class="fi2" id="hfs">${SEDES.map(s=>`<option value="${s.id}">${s.n} — ${s.c}</option>`).join("")}</select></div>
-    <div class="fgrid"><div class="ff" style="margin:0"><label class="fl">Sistema</label><select class="fi2" id="hfsi">${SIS.map(s=>`<option>${s.cat}</option>`).join("")}</select></div><div class="ff" style="margin:0"><label class="fl">Prioridad</label><select class="fi2" id="hfp"><option>Alta</option><option>Media</option><option>Baja</option></select></div><div class="ff" style="margin:0"><label class="fl">Fecha</label><input type="date" class="fi2" id="hff" value="${yf(HOY)}"></div><div class="ff" style="margin:0"><label class="fl">Visita N°</label><select class="fi2" id="hfv">${MESES.map((m,i)=>`<option value="${i+1}">Visita ${i+1} — ${m}</option>`).join("")}</select></div></div>
-    <div class="ff"><label class="fl">Descripción</label><textarea class="fi2" id="hfd" placeholder="Describe el hallazgo..."></textarea></div>
-    <div class="ff"><label class="fl">Acción recomendada</label><textarea class="fi2" id="hfa" style="min-height:54px" placeholder="Acción correctiva..."></textarea></div>
-    <div class="ff"><label class="fl">Fotos</label>
-      <div id="hl-foto-prev" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
-      <label style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px dashed var(--border2);border-radius:7px;padding:6px 11px;font-size:12px;color:var(--text3)">📸 Agregar <input type="file" accept="image/*" multiple onchange="agregarFotosHL(event)" style="display:none"></label>
+    <div class="ff"><label class="fl">¿Qué encontraste?</label><textarea class="fi2" id="hfd" placeholder="Describe el problema con detalle..." style="min-height:80px"></textarea></div>
+    <div class="ff"><label class="fl">Fotos del hallazgo</label>
+      <div id="hl-foto-prev" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;background:#FEF3E8;border:2px dashed var(--accent);border-radius:10px;padding:14px;font-size:13px;color:var(--accent);font-weight:700">
+        📸 Tomar foto / Adjuntar
+        <input type="file" accept="image/*" multiple capture="environment" onchange="agregarFotosHL(event)" style="display:none">
+      </label>
     </div>
-    <div class="mbtns"><button class="bcn" onclick="closeMo()">Cancelar</button><button class="bsv" onclick="saveHL()">Registrar</button></div>`;
+    <div class="fgrid">
+      <div class="ff" style="margin:0"><label class="fl">Sistema</label><select class="fi2" id="hfsi">${SIS.map(s=>`<option>${s.cat}</option>`).join("")}</select></div>
+      <div class="ff" style="margin:0"><label class="fl">Prioridad</label><select class="fi2" id="hfp"><option>Alta</option><option>Media</option><option>Baja</option></select></div>
+    </div>
+    <div class="ff"><label class="fl">Acción recomendada (opcional)</label><textarea class="fi2" id="hfa" style="min-height:54px" placeholder="¿Qué se debe hacer?"></textarea></div>
+    <input type="hidden" id="hff" value="${yf(HOY)}">
+    <input type="hidden" id="hfv" value="${mesActual+1}">
+    <div class="mbtns"><button class="bcn" onclick="closeMo()">Cancelar</button><button class="bsv" style="padding:14px;font-size:15px" onclick="saveHL()">✅ Guardar hallazgo</button></div>`;
   document.getElementById("modal").classList.add("on");
 }
+// ── SUBIDA DE FOTOS A GOOGLE DRIVE ───────────────────────────
+async function subirFotoDrive(base64, nombre, contexto){
+  // contexto: {tienda, visita, mes, modulo}
+  if(!GAS_URL)return base64; // fallback local si no hay GAS
+  try{
+    const payload={
+      tipo:"foto",
+      base64,
+      mimeType:base64.startsWith("data:image/png")?"image/png":"image/jpeg",
+      nombre:nombre||("foto_"+Date.now()+".jpg"),
+      tienda:contexto.tienda||"Sin tienda",
+      visita:contexto.visita||"Extra",
+      mes:contexto.mes||"",
+      modulo:contexto.modulo||"actividad"
+    };
+    const resp=await new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open("POST",GAS_URL,true);
+      xhr.setRequestHeader("Content-Type","text/plain");
+      xhr.timeout=30000; // fotos pueden tardar más
+      xhr.onload=()=>{
+        try{resolve(JSON.parse(xhr.responseText));}
+        catch(e){resolve({ok:false});}
+      };
+      xhr.onerror=()=>resolve({ok:false});
+      xhr.ontimeout=()=>resolve({ok:false});
+      xhr.send(JSON.stringify(payload));
+    });
+    if(resp.ok&&resp.url)return resp.url;
+    return base64; // fallback si falla la subida
+  }catch(e){
+    console.error("Error subiendo foto:",e);
+    return base64; // fallback local
+  }
+}
+
 function agregarFotosHL(ev){
   Array.from(ev.target.files).forEach(file=>{
     const r=new FileReader();
-    r.onload=e=>{
-      (window._hlFotos=window._hlFotos||[]).push(e.target.result);
+    r.onload=async e=>{
+      const base64=e.target.result;
       const prev=document.getElementById("hl-foto-prev");
+      // Mostrar preview local inmediatamente
+      (window._hlFotos=window._hlFotos||[]).push(base64);
+      if(prev)prev.innerHTML=(window._hlFotos||[]).map(f=>`<img src="${f}" class="foto-thumb">`).join("");
+      // Subir a Drive en segundo plano
+      const sid=parseInt((document.getElementById("hfs")||{}).value||"0");
+      const vis=parseInt((document.getElementById("hfv")||{}).value||"1");
+      const s=sd(sid);
+      const url=await subirFotoDrive(base64,file.name,{
+        tienda:s?s.n:"Sin tienda",
+        visita:vis,
+        mes:MESES[vis-1]||"",
+        modulo:"hallazgo"
+      });
+      // Reemplazar base64 con URL de Drive
+      const idx=(window._hlFotos||[]).indexOf(base64);
+      if(idx>=0)(window._hlFotos||[])[idx]=url;
       if(prev)prev.innerHTML=(window._hlFotos||[]).map(f=>`<img src="${f}" class="foto-thumb">`).join("");
     };r.readAsDataURL(file);
   });
@@ -1487,16 +1560,34 @@ function openDet(id){
     ${a.notas?`<div style="background:var(--bg3);border-radius:7px;padding:9px 12px;margin-bottom:11px"><div class="dk" style="margin-bottom:4px">NOTAS</div><div style="color:var(--text2);font-size:13px">${a.notas}</div></div>`:""}
     <div style="margin-bottom:11px"><div class="dk" style="margin-bottom:6px">FOTOS (${(a.fotos||[]).length})</div>
     <div class="foto-grid" id="act-foto-prev">${(a.fotos||[]).map(f=>`<img src="${f}" class="foto-thumb" onclick="abrirLightbox('${f}')">`).join("")}</div>
-    <label style="cursor:pointer;margin-top:6px;display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px dashed var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text3)">📸 Agregar <input type="file" accept="image/*" multiple onchange="agregarFotosAct(event,${id})" style="display:none"></label></div>
+    <label style="cursor:pointer;margin-top:6px;display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px dashed var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text3)">📸 Agregar <input type="file" accept="image/*" multiple capture="environment" onchange="agregarFotosAct(event,${id})" style="display:none"></label></div>
     <div style="display:flex;gap:6px"><button class="btn2" style="flex:1" onclick="openForm(${a.id})">✏ Editar</button><button style="background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:8px;padding:9px;cursor:pointer;font-family:inherit" onclick="delAct(${a.id})">🗑</button></div>`;
   document.getElementById("modal").classList.add("on");
 }
 function agregarFotosAct(ev,actId){
   Array.from(ev.target.files).forEach(file=>{
     const r=new FileReader();
-    r.onload=e=>{
-      A=A.map(a=>a.id===actId?{...a,fotos:[...(a.fotos||[]),e.target.result]}:a);
+    r.onload=async e=>{
+      const base64=e.target.result;
+      // Mostrar preview local inmediatamente
+      A=A.map(a=>a.id===actId?{...a,fotos:[...(a.fotos||[]),base64]}:a);
       const prev=document.getElementById("act-foto-prev");
+      if(prev){const ax=A.find(x=>x.id===actId);prev.innerHTML=(ax?.fotos||[]).map(f=>`<img src="${f}" class="foto-thumb" onclick="abrirLightbox('${f}')">`).join("");}
+      // Subir a Drive en segundo plano
+      const act=A.find(a=>a.id===actId);
+      const s=sd(act?.sede);
+      const url=await subirFotoDrive(base64,file.name,{
+        tienda:s?s.n:"Sin tienda",
+        visita:act?.visita||"Extra",
+        mes:act?.mes!==undefined?MESES[act.mes]:"",
+        modulo:"actividad"
+      });
+      // Reemplazar base64 con URL de Drive
+      A=A.map(a=>{
+        if(a.id!==actId)return a;
+        const fotos=(a.fotos||[]).map(f=>f===base64?url:f);
+        return {...a,fotos};
+      });
       if(prev){const ax=A.find(x=>x.id===actId);prev.innerHTML=(ax?.fotos||[]).map(f=>`<img src="${f}" class="foto-thumb" onclick="abrirLightbox('${f}')">`).join("");}
       guardarLocal();
     };r.readAsDataURL(file);
