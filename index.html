@@ -159,6 +159,7 @@ textarea.fi2{min-height:65px;resize:vertical;}
       <span style="display:block;text-align:center;background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:7px;padding:8px;font-size:11px;font-weight:700;cursor:pointer">📂 Importar JSON</span>
       <input type="file" accept=".json" onchange="importarTodo(event)" style="display:none">
     </label>
+    <button onclick="abrirResetDatos()" style="width:100%;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:7px;padding:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:5px">🗑 Resetear datos</button>
   </div>
 </aside>
 <div id="main">
@@ -1613,6 +1614,82 @@ function saveAct(id){
 }
 function delAct(id){if(!confirm("¿Eliminar?"))return;A=A.filter(a=>a.id!==id);closeMo();guardarLocal();({actividades:renderActs,dashboard:renderDash})[VISTA]?.();}
 function closeMo(e){if(e&&e.target!==document.getElementById("modal"))return;document.getElementById("modal").classList.remove("on");}
+
+// ── RESET DE DATOS ────────────────────────────────────────────
+function abrirResetDatos(){
+  document.getElementById("mocont").innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="mtit" style="margin:0;color:#DC2626">🗑 Resetear datos</div>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)" onclick="closeMo()">✕</button>
+    </div>
+    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:13px;color:#DC2626;margin-bottom:6px">⚠️ Esta acción no se puede deshacer</div>
+      <div style="font-size:13px;color:#334155;line-height:1.6">Se eliminarán todos los datos locales:<br>
+      actividades, hallazgos, cotizaciones, actas y checklist.<br>
+      <strong>Recomendado: exporta un respaldo primero.</strong></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">¿Qué quieres resetear?</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;cursor:pointer">
+        <input type="checkbox" id="rst-act" checked style="accent-color:#DC2626;width:15px;height:15px">
+        <span style="font-size:13px">Actividades y cronograma</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;cursor:pointer">
+        <input type="checkbox" id="rst-hl" checked style="accent-color:#DC2626;width:15px;height:15px">
+        <span style="font-size:13px">Hallazgos</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;cursor:pointer">
+        <input type="checkbox" id="rst-cot" checked style="accent-color:#DC2626;width:15px;height:15px">
+        <span style="font-size:13px">Cotizaciones</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;cursor:pointer">
+        <input type="checkbox" id="rst-actas" checked style="accent-color:#DC2626;width:15px;height:15px">
+        <span style="font-size:13px">Actas y firmas</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;cursor:pointer">
+        <input type="checkbox" id="rst-cl" checked style="accent-color:#DC2626;width:15px;height:15px">
+        <span style="font-size:13px">Checklist de visitas</span>
+      </label>
+    </div>
+    <div style="background:#FFFBF7;border:1px solid #FED7AA;border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#92400E">
+      💡 El Google Sheet <strong>no</strong> se modifica — solo se limpian los datos locales del navegador.
+      Para limpiar el Sheet también, hazlo manualmente desde Google Sheets.
+    </div>
+    <div class="mbtns">
+      <button class="bcn" onclick="closeMo()">Cancelar</button>
+      <button onclick="exportarTodo()" style="flex:1;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:8px;padding:9px;cursor:pointer;font-family:inherit;font-weight:700">💾 Exportar antes</button>
+      <button onclick="confirmarReset()" style="flex:1;background:#DC2626;border:none;border-radius:8px;color:#fff;padding:9px;cursor:pointer;font-family:inherit;font-weight:700">🗑 Confirmar reset</button>
+    </div>`;
+  document.getElementById("modal").classList.add("on");
+}
+
+function confirmarReset(){
+  const rstAct   = document.getElementById("rst-act")?.checked;
+  const rstHL    = document.getElementById("rst-hl")?.checked;
+  const rstCot   = document.getElementById("rst-cot")?.checked;
+  const rstActas = document.getElementById("rst-actas")?.checked;
+  const rstCL    = document.getElementById("rst-cl")?.checked;
+
+  if(rstAct){
+    A=genActs();
+    NID=A.length+1;
+    SCHED={};
+    VISITAS_EXTRA={};
+  }
+  if(rstHL){H=[];NHID=1;}
+  if(rstCot){COT=[];NCID=1;}
+  if(rstActas){ACTAS=[];NAID=1;}
+  if(rstCL){CL={};}
+
+  // Limpiar localStorage completamente y reescribir
+  localStorage.removeItem("monastery_v2");
+  localStorage.removeItem("monastery_last_sync");
+  guardarLocal();
+  closeMo();
+  go("dashboard");
+  showBanner("✅ Datos reseteados correctamente","#059669",3000);
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 function init(){
   cargarLocal();
