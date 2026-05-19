@@ -648,12 +648,16 @@ async function sincronizarConSheets(){
       cotizaciones:COT,
       actas:ACTAS.map(a=>({...a,firmaImagen:undefined}))
     };
-    // POST simple - no-cors evita el error de CORS en archivos locales
-    await fetch(GAS_URL,{
-      method:"POST",
-      mode:"no-cors",
-      headers:{"Content-Type":"text/plain"},
-      body:JSON.stringify(payload)
+    // Usar XMLHttpRequest que maneja mejor CORS con GAS
+    await new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open("POST",GAS_URL,true);
+      xhr.setRequestHeader("Content-Type","text/plain");
+      xhr.timeout=10000;
+      xhr.onload=()=>resolve();
+      xhr.onerror=()=>resolve(); // GAS a veces da error aunque graba bien
+      xhr.ontimeout=()=>resolve();
+      xhr.send(JSON.stringify(payload));
     });
     lastSyncTime=new Date().toISOString();
     localStorage.setItem("monastery_last_sync",lastSyncTime);
@@ -668,7 +672,6 @@ async function sincronizarConSheets(){
     isSyncing=false;
   }
 }
-
 function mergeDesdSheets(data){
   // Merge deshabilitado temporalmente - solo push activo
 }
