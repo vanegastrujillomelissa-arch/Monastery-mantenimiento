@@ -516,13 +516,19 @@ function guardarLocal(){
 
 function cargarLocal(){
   try{
-    const raw=localStorage.getItem("monastery_v2");if(!raw)return;
-    const d=JSON.parse(raw);if(d.v!==2)return;
-    A=d.A||genActs();H=d.H||[];CL=d.CL||{};SCHED=d.SCHED||{};
+    const raw=localStorage.getItem("monastery_v2");
+    if(!raw){
+      // Sin datos guardados — generar plan base y guardarlo
+      A=genActs();NID=A.length+1;
+      guardarLocal();
+      return;
+    }
+    const d=JSON.parse(raw);if(d.v!==2){A=genActs();NID=A.length+1;guardarLocal();return;}
+    A=d.A&&d.A.length?d.A:genActs();H=d.H||[];CL=d.CL||{};SCHED=d.SCHED||{};
     COT=d.COT||[];ACTAS=d.ACTAS||[];VISITAS_EXTRA=d.VISITAS_EXTRA||{};
     NID=d.NID||A.length+1;NHID=d.NHID||1;NCID=d.NCID||1;NAID=d.NAID||1;
     A=A.map(a=>({fotos:[],...a}));
-  }catch(e){}
+  }catch(e){A=genActs();NID=A.length+1;}
   // Cargar config de Sheets (URL ya hardcodeada, localStorage como override)
   GAS_URL=localStorage.getItem("monastery_gas_url")||GAS_URL;
   if(!localStorage.getItem("monastery_gas_url")&&GAS_URL){
