@@ -673,6 +673,48 @@ function mergeDesdSheets(data){
   // Merge deshabilitado temporalmente - solo push activo
 }
 
+// ── NOTIFICACIONES ───────────────────────────────────────────────────────────
+function generarNotificaciones(){
+  const lista=[];const a=AA();
+  const venc=a.filter(x=>x.estado==="Vencido");
+  if(venc.length)lista.push({tipo:"urgente",titulo:venc.length+" actividades vencidas",desc:"Requieren atención inmediata",vista:"agenda"});
+  const prox=[...new Map(a.filter(x=>{const d=dt(x.fecha);return x.estado==="Programado"&&d>=0&&d<=3;}).map(x=>[x.sede+"_"+x.mes,x])).values()];
+  prox.forEach(x=>{const s=sd(x.sede);lista.push({tipo:"alerta",titulo:`Visita próxima: ${s?.n}`,desc:`${s?.c} · Visita ${x.visita}/12 · ${x.fecha} · ${dt(x.fecha)===0?"HOY":"en "+dt(x.fecha)+"d"}`,vista:"checklist"});});
+  H.filter(h=>h.estado!=="Resuelto"&&Math.abs(dt(h.fecha))>7).forEach(h=>{const s=sd(h.sede);lista.push({tipo:h.prioridad==="Alta"?"urgente":"alerta",titulo:`Hallazgo abierto ${Math.abs(dt(h.fecha))}d: ${s?.n}`,desc:h.desc.substring(0,80),vista:"hallazgos"});});
+  COT.filter(c=>c.estado==="Enviada al cliente").forEach(c=>{const s=sd(c.sede);lista.push({tipo:"alerta",titulo:`Cotización pend.: ${s?.n}`,desc:`${c.titulo} · ${cop(c.valor)}`,vista:"cotizaciones"});});
+  const mes=HOY.getMonth();const am=a.filter(x=>x.mes===mes);
+  const pct=am.length?Math.round(am.filter(x=>x.estado==="Completado").length/am.length*100):0;
+  lista.push({tipo:"info",titulo:`Cumplimiento ${MESES[mes]}: ${pct}%`,desc:`${am.filter(x=>x.estado==="Completado").length}/${am.length} completadas`,vista:"kpi"});
+  const actasPend=ACTAS.filter(a=>!a.firmada).length;
+  if(actasPend)lista.push({tipo:"alerta",titulo:`${actasPend} acta(s) pendiente(s) de firma`,desc:"Sin firma del administrador",vista:"actas"});
+  return lista;
+}
+
+function renderNotificaciones(){
+  const lista=generarNotificaciones();
+  const nl=document.getElementById("notif-list");
+  if(nl)nl.innerHTML=lista.length?lista.map(n=>`
+    <div class="notif-item ${n.tipo}" onclick="go('${n.vista}')" style="cursor:pointer">
+      <div style="font-size:18px;flex-shrink:0">${n.tipo==="urgente"?"🚨":n.tipo==="alerta"?"⚠️":"ℹ️"}</div>
+      <div style="flex:1"><div style="font-weight:700;font-size:13px">${n.titulo}</div>
+      <div style="color:var(--text3);font-size:12px;margin-top:2px">${n.desc}</div>
+      <div style="color:var(--text4);font-size:10px;margin-top:3px">Clic para ir →</div></div>
+    </div>`).join(""):`<div style="text-align:center;padding:36px;color:var(--text4)">✅ Sin alertas pendientes</div>`;
+  actualizarBadgeNotif(lista);
+}
+
+function actualizarBadgeNotif(lista){
+  lista=lista||generarNotificaciones();
+  const urg=lista.filter(n=>n.tipo==="urgente"||n.tipo==="alerta").length;
+  const nc=document.getElementById("notif-count");
+  const nt=document.getElementById("notif-top-count");
+  if(nc){nc.style.display=urg?"inline":"none";nc.textContent=urg;}
+  if(nt)nt.textContent=urg?urg+" alertas":"";
+}
+
+function filterNotif(tipo,el){renderNotificaciones();}
+function marcarTodasLeidas(){renderNotificaciones();}
+
 // ── COTIZACIONES ──────────────────────────────────────────────────────────────
 function renderCot(){
   const sid=document.getElementById("cotsede").value;
