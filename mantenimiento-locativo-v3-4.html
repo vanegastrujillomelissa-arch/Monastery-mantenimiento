@@ -610,6 +610,33 @@ async function probarConexionSheets(){
 // ── SINCRONIZACIÓN BIDIRECCIONAL ──────────────────────────────────────────────
 let isSyncing=false;
 
+// ── UI HELPERS SYNC ──────────────────────────────────────────────────────────
+function setSyncStatus(state,text){
+  const dot=document.getElementById("sync-dot");
+  const txt=document.getElementById("sync-status-text");
+  if(dot)dot.className=state;
+  if(txt)txt.textContent=text||"";
+}
+
+function actualizarEstadoSync(){
+  if(!GAS_URL){setSyncStatus("","Sin configurar");return;}
+  if(lastSyncTime){
+    setSyncStatus("ok","Sheets ✓ "+new Date(lastSyncTime).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}));
+  }else{
+    setSyncStatus("","URL configurada");
+  }
+}
+
+function showBanner(msg,bg,duration){
+  const b=document.getElementById("sync-banner");if(!b)return;
+  b.textContent=msg;b.style.background=bg||"#1D4ED8";b.style.display="block";
+  setTimeout(()=>{b.style.display="none";},duration||3000);
+}
+
+function mergeDesdSheets(data){
+  // Pull deshabilitado — solo push activo
+}
+
 async function sincronizarConSheets(){
   if(!GAS_URL||isSyncing)return;
   isSyncing=true;
