@@ -500,8 +500,25 @@ let syncPending = false;     // hay cambios sin sincronizar
 let lastSyncTime = null;     // ISO string del último sync exitoso
 let syncTimer = null;        // debounce timer
 
+function sanitizarActividades(){
+  // Corregir visita corrupta (timestamp) y sistema/costo inválidos
+  A=A.map(a=>{
+    let visita=a.visita;
+    // Si visita es un número grande (timestamp ms) o NaN, calcular desde mes
+    if(typeof visita!=="number"||isNaN(visita)||visita>100){
+      visita=typeof a.mes==="number"?a.mes+1:1;
+    }
+    let costo=Number(a.costo);
+    if(isNaN(costo)||costo<=0)costo=Math.round(2350000/63); // costo base por ítem
+    let sistema=a.sistema||a.categoria||"";
+    if(!sistema||sistema==="undefined")sistema=a.categoria||"General";
+    return{...a,visita,costo,sistema,categoria:sistema};
+  });
+}
+
 function guardarLocal(){
   try{
+    sanitizarActividades();
     localStorage.setItem("monastery_v2",JSON.stringify({A,H,CL,SCHED,COT,ACTAS,VISITAS_EXTRA,NID,NHID,NCID,NAID,v:2}));
     const el=document.getElementById("save-indicator");
     if(el){el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2000);}
@@ -528,6 +545,7 @@ function cargarLocal(){
     COT=d.COT||[];ACTAS=d.ACTAS||[];VISITAS_EXTRA=d.VISITAS_EXTRA||{};
     NID=d.NID||A.length+1;NHID=d.NHID||1;NCID=d.NCID||1;NAID=d.NAID||1;
     A=A.map(a=>({fotos:[],...a}));
+    if(typeof sanitizarActividades==="function")sanitizarActividades();
   }catch(e){A=genActs();NID=A.length+1;}
   // Cargar config de Sheets (URL ya hardcodeada, localStorage como override)
   GAS_URL=localStorage.getItem("monastery_gas_url")||GAS_URL;
