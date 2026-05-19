@@ -217,7 +217,7 @@ textarea.fi2{min-height:65px;resize:vertical;}
           <input class="fi" id="fbusq" placeholder="🔍 Buscar actividad o tienda..." oninput="renderActs()" style="flex:1 1 160px">
           <select class="fi" id="fsede" onchange="renderActs()"><option value="">Todas las tiendas</option></select>
           <select class="fi" id="ftipo" onchange="renderActs()"><option value="">Prev. y Correctivo</option><option>Preventivo</option><option>Correctivo</option></select>
-          <select class="fi" id="fest" onchange="renderActs()"><option value="">Todos los estados</option><option>Programado</option><option>En progreso</option><option>Completado</option><option>Vencido</option><option>Cancelado</option></select>
+          <select class="fi" id="fest" onchange="renderActs()"><option value="">Todos los estados</option><option>Por programar</option><option>Programado</option><option>En progreso</option><option>Completado</option><option>Vencido</option><option>Cancelado</option></select>
           <select class="fi" id="fcat" onchange="renderActs()"><option value="">Todos los sistemas</option></select>
         </div>
         <button class="btn" onclick="openForm(null)" style="white-space:nowrap">+ Nueva correctiva</button>
@@ -449,7 +449,7 @@ const SIS=[
   {cat:"Infraestructura",i:"🏗️",items:["Revisión filtraciones","Revisión cielo falso","Inspección general tienda","Identificación deterioros"]},
 ];
 const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const EC={Programado:"#2563EB","En progreso":"#D97706",Completado:"#059669",Vencido:"#DC2626",Cancelado:"#6B7280"};
+const EC={Programado:"#2563EB","Por programar":"#94A3B8","En progreso":"#D97706",Completado:"#059669",Vencido:"#DC2626",Cancelado:"#6B7280"};
 const PC={Alta:"#DC2626",Media:"#D97706",Baja:"#059669"};
 const VE=["Ejecutada","Pendiente VoBo Terreno","Pendiente VoBo Monastery","Pago autorizado","Rechazada"];
 const VC={"Ejecutada":"#2563EB","Pendiente VoBo Terreno":"#D97706","Pendiente VoBo Monastery":"#7C3AED","Pago autorizado":"#059669","Rechazada":"#DC2626"};
@@ -470,7 +470,7 @@ function genActs(){
     SEDES.forEach(sede=>{
       SIS.forEach(sis=>{
         sis.items.forEach(item=>{
-          r.push({id:id++,titulo:item,sistema:sis.cat,icono:sis.i,sede:sede.id,categoria:sis.cat,tipo:"Preventivo",estado:"Programado",fecha:gf(y,m,15),costo:costPerItem,prioridad:"Media",responsable:"Terreno Inmobiliario",notas:"Visita "+(m+1)+"/12 — "+MESES[m],visita:m+1,mes:m,fotos:[]});
+          r.push({id:id++,titulo:item,sistema:sis.cat,icono:sis.i,sede:sede.id,categoria:sis.cat,tipo:"Preventivo",estado:"Por programar",fecha:gf(y,m,15),costo:costPerItem,prioridad:"Media",responsable:"Terreno Inmobiliario",notas:"Visita "+(m+1)+"/12 — "+MESES[m],visita:m+1,mes:m,fotos:[]});
         });
       });
     });
@@ -487,7 +487,7 @@ function setSchedDate(sid,v,fecha){
   SCHED[schedKey(sid,v)]=fecha;
   A=A.map(a=>a.sede===sid&&a.visita===v?Object.assign({},a,{fecha:fecha}):a);
 }
-const isV=a=>a.estado!=="Completado"&&a.estado!=="Cancelado"&&new Date(a.fecha)<HOY;
+const isV=a=>a.estado!=="Completado"&&a.estado!=="Cancelado"&&a.estado!=="Por programar"&&new Date(a.fecha)<HOY;
 const er=a=>isV(a)?"Vencido":a.estado;
 const dt=f=>Math.ceil((new Date(f)-HOY)/86400000);
 function AA(){return A.map(a=>({...a,estado:er(a)}));}
@@ -500,7 +500,7 @@ let syncTimer = null;        // debounce timer
 
 function guardarLocal(){
   try{
-    localStorage.setItem("monastery_v2",JSON.stringify({A,H,CL,SCHED,COT,ACTAS,NID,NHID,NCID,NAID,v:2}));
+    localStorage.setItem("monastery_v2",JSON.stringify({A,H,CL,SCHED,COT,ACTAS,VISITAS_EXTRA,NID,NHID,NCID,NAID,v:2}));
     const el=document.getElementById("save-indicator");
     if(el){el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2000);}
   }catch(e){}
@@ -517,7 +517,7 @@ function cargarLocal(){
     const raw=localStorage.getItem("monastery_v2");if(!raw)return;
     const d=JSON.parse(raw);if(d.v!==2)return;
     A=d.A||genActs();H=d.H||[];CL=d.CL||{};SCHED=d.SCHED||{};
-    COT=d.COT||[];ACTAS=d.ACTAS||[];
+    COT=d.COT||[];ACTAS=d.ACTAS||[];VISITAS_EXTRA=d.VISITAS_EXTRA||{};
     NID=d.NID||A.length+1;NHID=d.NHID||1;NCID=d.NCID||1;NAID=d.NAID||1;
     A=A.map(a=>({fotos:[],...a}));
   }catch(e){}
@@ -947,7 +947,7 @@ function go(v){
 function renderDash(){
   const a=AA();const tot=a.length,cp=a.filter(x=>x.estado==="Completado").length,vn=a.filter(x=>x.estado==="Vencido").length,pr=a.filter(x=>x.estado==="En progreso").length;
   const pendCot=COT.filter(c=>c.estado==="Enviada al cliente").length;const actasPend=ACTAS.filter(a=>!a.firmada).length;
-  if(vn>0){const ab=document.getElementById("abar");if(ab)ab.style.display="block";const am=document.getElementById("amsg");if(am)am.textContent=vn+" vencidas"+(pendCot?" · "+pendCot+" cot. pend.":"");}
+  const realVenc=AA().filter(x=>x.estado==="Vencido").length;if(realVenc>0){const ab=document.getElementById("abar");if(ab)ab.style.display="block";const am=document.getElementById("amsg");if(am)am.textContent=realVenc+" vencidas"+(pendCot?" · "+pendCot+" cot. pend.":"");}
   document.getElementById("db-stats").innerHTML=[
     {i:"🏪",l:"Tiendas",v:SEDES.length,s:"nacional",c:"#2563EB",v2:"sedes"},
     {i:"✅",l:"Completadas",v:cp,s:Math.round(cp/tot*100)+"% cumpl.",c:"#059669",v2:"agenda"},
@@ -968,7 +968,7 @@ function renderKPI(){
   const ciu=[...new Set(SEDES.map(s=>s.c))];
   document.getElementById("kpi-ciudad").innerHTML=ciu.map(c=>{const sc=SEDES.filter(s=>s.c===c);const ac=a.filter(x=>sc.find(s=>s.id===x.sede));const cp2=ac.filter(x=>x.estado==="Completado").length;const p=ac.length?Math.round(cp2/ac.length*100):0;const col=p>=80?"#059669":p>=40?"#D97706":"#2563EB";return `<div class="brow"><div class="blbl"><span style="font-weight:600">${c}</span><span style="color:${col};font-weight:700">${p}%</span></div><div class="btr"><div class="bfill" style="width:${p}%;background:${col}"></div></div></div>`;}).join("");
   document.getElementById("kpi-sistema").innerHTML=SIS.map(s=>{const as=a.filter(x=>x.categoria===s.cat);const cp2=as.filter(x=>x.estado==="Completado").length;const p=as.length?Math.round(cp2/as.length*100):0;return `<div class="brow"><div class="blbl"><span>${s.i} ${s.cat}</span><span style="color:var(--text3)">${p}%</span></div><div class="btr"><div class="bfill" style="width:${p}%;background:var(--accent)"></div></div></div>`;}).join("");
-  document.getElementById("kpi-sem").innerHTML=SEDES.map(s=>{const sa=a.filter(x=>x.sede===s.id);const cp2=sa.filter(x=>x.estado==="Completado").length;const vn2=sa.filter(x=>x.estado==="Vencido").length;const p=sa.length?Math.round(cp2/sa.length*100):0;const col=vn2>0?"#DC2626":p>=80?"#059669":p>=40?"#D97706":"#2563EB";const bg=vn2>0?"#FEF2F2":p>=80?"#DCFCE7":p>=40?"#FEF3C7":"#EFF6FF";return `<div style="background:${bg};border:1px solid ${col}44;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.n}</div><div style="color:var(--text4);font-size:10px">${s.c} · ${p}%</div></div></div>`;}).join("");
+  document.getElementById("kpi-sem").innerHTML=SEDES.map(s=>{const sa=a.filter(x=>x.sede===s.id);const cp2=sa.filter(x=>x.estado==="Completado").length;const vn2=sa.filter(x=>x.estado==="Vencido").length;const p=sa.length?Math.round(cp2/sa.length*100):0;const porProg=sa.filter(x=>x.estado==="Por programar").length;const col=vn2>0?"#DC2626":p>=80?"#059669":p>=40?"#D97706":porProg===sa.length?"#94A3B8":"#2563EB";const bg=vn2>0?"#FEF2F2":p>=80?"#DCFCE7":p>=40?"#FEF3C7":porProg===sa.length?"#F1F5F9":"#EFF6FF";return `<div style="background:${bg};border:1px solid ${col}44;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.n}</div><div style="color:var(--text4);font-size:10px">${s.c} · ${p}%</div></div></div>`;}).join("");
 }
 // ── GANTT ─────────────────────────────────────────────────────────────────────
 function renderGantt(){
@@ -993,7 +993,7 @@ function renderActs(){
 
   al.innerHTML=f.slice(0,300).map(x=>{
     const s=sd(x.sede);const d=dt(x.fecha);
-    const dLabel=x.estado==="Completado"?"✓":d<0?Math.abs(d)+"d vencida":d===0?"HOY":"en "+d+"d";
+    const dLabel=x.estado==="Completado"?"✓":x.estado==="Por programar"?"Sin fecha":d<0?Math.abs(d)+"d vencida":d===0?"HOY":"en "+d+"d";
     const dColor=x.estado==="Vencido"?"#DC2626":x.estado==="Completado"?"#059669":"var(--text2)";
     const tc=(x.tipo||"Preventivo")==="Correctivo"?"#DC2626":"#059669";
     const fotoCount=(x.fotos||[]).length;
@@ -1001,10 +1001,12 @@ function renderActs(){
     const esVencida=x.estado==="Vencido";
 
     // Botones de acción rápida según estado
+    const esPorProgramar=x.estado==="Por programar";
     const btns=esCompletada
       ? `<button onclick="event.stopPropagation();reabrirAct(${x.id})" style="background:#FEF3E8;color:#C9853A;border:1px solid #FDBA74;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">↩ Reabrir</button>`
-      : `<button onclick="event.stopPropagation();completarAct(${x.id})" style="background:#F0FDF4;color:#059669;border:1px solid #86EFAC;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">✓ Completar</button>
-         ${!esCompletada?`<button onclick="event.stopPropagation();enProgresoAct(${x.id})" style="background:#FFFBF7;color:#D97706;border:1px solid #FED7AA;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">▶ En progreso</button>`:""}`;
+      : `${esPorProgramar?`<button onclick="event.stopPropagation();programarAct(${x.id})" style="background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">📅 Programar</button>`:""}
+         <button onclick="event.stopPropagation();completarAct(${x.id})" style="background:#F0FDF4;color:#059669;border:1px solid #86EFAC;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">✓ Completar</button>
+         <button onclick="event.stopPropagation();enProgresoAct(${x.id})" style="background:#FFFBF7;color:#D97706;border:1px solid #FED7AA;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">▶ En progreso</button>`;
 
     return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 16px;margin-bottom:7px;border-left:3px solid ${EC[x.estado]};box-shadow:0 1px 3px #0000000A;">
       <!-- Fila principal -->
@@ -1042,6 +1044,11 @@ function renderActs(){
 }
 
 // Acciones rápidas desde tarjeta
+function programarAct(id){
+  // Cambia de "Por programar" a "Programado"
+  A=A.map(a=>a.id===id?{...a,estado:"Programado"}:a);
+  guardarLocal();renderActs();
+}
 function completarAct(id){
   A=A.map(a=>a.id===id?{...a,estado:"Completado",voboEstado:"Ejecutada"}:a);
   guardarLocal();renderActs();
@@ -1056,46 +1063,171 @@ function reabrirAct(id){
 }
 function cambiarFechaAct(id,fecha){
   if(!fecha)return;
-  A=A.map(a=>a.id===id?{...a,fecha}:a);
+  A=A.map(a=>{
+    if(a.id!==id)return a;
+    // Si estaba "Por programar" y se le asigna fecha, pasa a "Programado"
+    const nuevoEstado=a.estado==="Por programar"?"Programado":a.estado;
+    return {...a,fecha,estado:nuevoEstado};
+  });
   guardarLocal();renderActs();
 }
-// ── PROGRAMACIÓN ──────────────────────────────────────────────────────────────
+// ── PROGRAMACIÓN (múltiples visitas por mes/tienda) ──────────────────────────
+// VISITAS_EXTRA: {sede_id: {mes: [{fecha, tipo, nota, id}]}}
+// Las visitas del plan base siguen en SCHED como antes
+// Las adicionales se guardan en VISITAS_EXTRA
+
+if(typeof VISITAS_EXTRA==="undefined") var VISITAS_EXTRA={};
+
+function getVisitasExtra(sid, mes){
+  return (VISITAS_EXTRA[sid]&&VISITAS_EXTRA[sid][mes])||[];
+}
+
+function addVisitaExtra(sid, mes, fecha, tipo, nota){
+  if(!VISITAS_EXTRA[sid]) VISITAS_EXTRA[sid]={};
+  if(!VISITAS_EXTRA[sid][mes]) VISITAS_EXTRA[sid][mes]=[];
+  const id="ve_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+  VISITAS_EXTRA[sid][mes].push({id,fecha,tipo,nota:nota||""});
+  // Crear actividades para esta visita extra
+  crearActividadesVisitaExtra(sid, mes, fecha, tipo, id);
+  guardarLocal();
+  return id;
+}
+
+function removeVisitaExtra(sid, mes, vid){
+  if(!VISITAS_EXTRA[sid]||!VISITAS_EXTRA[sid][mes]) return;
+  VISITAS_EXTRA[sid][mes]=VISITAS_EXTRA[sid][mes].filter(v=>v.id!==vid);
+  // Eliminar actividades asociadas
+  A=A.filter(a=>a.visitaExtraId!==vid);
+  guardarLocal();
+}
+
+function crearActividadesVisitaExtra(sid, mes, fecha, tipo, vid){
+  const s=sd(sid);
+  const costBase=Math.round(500000/SIS.length);
+  if(tipo==="Preventivo"){
+    SIS.forEach(sis=>{
+      sis.items.forEach(item=>{
+        A.push({id:NID++,titulo:item,sistema:sis.cat,icono:sis.i,sede:sid,categoria:sis.cat,tipo:"Preventivo",estado:"Programado",fecha,costo:costBase,prioridad:"Media",responsable:"Terreno Inmobiliario",notas:"Visita adicional — "+MESES[mes],visita:"extra",mes,fotos:[],visitaExtraId:vid});
+      });
+    });
+  } else {
+    // Correctiva: crear una actividad placeholder que el usuario puede editar
+    A.push({id:NID++,titulo:"Visita correctiva — "+s?.n,sistema:"Correctivo",icono:"🔧",sede:sid,categoria:"Correctivo",tipo:"Correctivo",estado:"Programado",fecha,costo:0,prioridad:"Alta",responsable:"Terreno Inmobiliario",notas:"Visita correctiva adicional — "+MESES[mes],visita:"extra",mes,fotos:[],visitaExtraId:vid});
+  }
+}
+
 function renderProg(){
   const visita=parseInt((document.getElementById("prog-visita")||{}).value||"0");
   const pc=document.getElementById("prog-content");if(!pc)return;
-  if(!visita){pc.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Selecciona una visita</div>';return;}
+  if(!visita){pc.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Selecciona un mes para programar</div>';return;}
   const mes=visita-1;const y=HOY.getFullYear();const ultimoDia=new Date(y,mes+1,0).getDate();
   const prog=SEDES.filter(s=>getSchedDate(s.id,visita)).length;
   const pct=Math.round(prog/SEDES.length*100);const col=pct===100?"#059669":pct>0?"#D97706":"#94A3B8";
-  let html=`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px"><div><div style="font-weight:800;font-size:15px">Visita ${visita}/12 — ${MESES[mes]}</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800;color:${col}">${prog}/${SEDES.length}</div><div style="color:var(--text4);font-size:11px">tiendas programadas</div></div></div><div style="background:var(--bg3);border-radius:5px;height:6px;overflow:hidden"><div style="background:${col};height:6px;width:${pct}%"></div></div></div>`;
+
+  let html=`<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div><div style="font-weight:800;font-size:15px">Visita ${visita}/12 — ${MESES[mes]}</div>
+      <div style="color:var(--text3);font-size:12px;margin-top:2px">Programa la visita base y agrega visitas adicionales por tienda</div></div>
+      <div style="text-align:right"><div style="font-size:20px;font-weight:800;color:${col}">${prog}/${SEDES.length}</div>
+      <div style="color:var(--text4);font-size:11px">tiendas con visita base</div></div>
+    </div>
+    <div style="background:var(--bg3);border-radius:5px;height:6px;overflow:hidden"><div style="background:${col};height:6px;width:${pct}%"></div></div>
+  </div>`;
+
   const ciudades={};SEDES.forEach(s=>{if(!ciudades[s.c])ciudades[s.c]=[];ciudades[s.c].push(s);});
+
   Object.keys(ciudades).sort().forEach(ciudad=>{
-    html+=`<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13px;margin-bottom:7px;padding-bottom:5px;border-bottom:2px solid var(--accent)">📍 ${ciudad}</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:9px">`;
+    html+=`<div style="margin-bottom:16px">
+      <div style="font-weight:800;font-size:13px;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--accent)">📍 ${ciudad}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px">`;
+
     ciudades[ciudad].forEach(s=>{
-      const fecha=getSchedDate(s.id,visita)||"";const prog2=fecha!=="";
-      html+=`<div style="background:#fff;border:1px solid ${prog2?"var(--green)":"var(--border)"};border-radius:10px;padding:13px 15px"><div style="display:flex;justify-content:space-between;margin-bottom:7px"><div><div style="font-weight:700;font-size:13px">${s.n}</div><div style="color:var(--text4);font-size:11px">${s.adm} · ${s.tel}</div></div>${prog2?'<span style="background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;border-radius:4px;padding:1px 7px;font-size:10px">✓</span>':""}</div><div style="display:flex;gap:7px"><input type="date" class="fi" id="fecha-${s.id}-${visita}" value="${fecha}" min="${y}-${String(mes+1).padStart(2,"0")}-01" max="${y}-${String(mes+1).padStart(2,"0")}-${String(ultimoDia).padStart(2,"0")}" onchange="updateFecha(${s.id},${visita},this.value)" style="flex:1;font-size:13px"><button onclick="clearFecha(${s.id},${visita})" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text4);padding:6px 9px;cursor:pointer;font-size:11px">✕</button></div></div>`;
+      const fechaBase=getSchedDate(s.id,visita)||"";
+      const extras=getVisitasExtra(s.id,mes);
+      const totalVisitas=(fechaBase?1:0)+extras.length;
+
+      html+=`<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 15px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div><div style="font-weight:700;font-size:13px">${s.n}</div>
+          <div style="color:var(--text4);font-size:11px">${s.adm} · ${s.tel}</div></div>
+          <span style="background:${totalVisitas>0?"#DCFCE7":"var(--bg3)"};color:${totalVisitas>0?"#15803D":"var(--text4)"};border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">${totalVisitas} visita${totalVisitas!==1?"s":""}</span>
+        </div>
+
+        <!-- Visita base -->
+        <div style="background:var(--bg3);border-radius:7px;padding:8px 10px;margin-bottom:7px">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:5px">📅 VISITA BASE (Preventiva)</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="date" value="${fechaBase}"
+              min="${y}-${String(mes+1).padStart(2,"0")}-01"
+              max="${y}-${String(mes+1).padStart(2,"0")}-${String(ultimoDia).padStart(2,"0")}"
+              onchange="updateFecha(${s.id},${visita},this.value)"
+              style="flex:1;border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit">
+            ${fechaBase?`<button onclick="clearFecha(${s.id},${visita})" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text4);padding:4px 8px;cursor:pointer;font-size:11px">✕</button>`:""}
+          </div>
+        </div>
+
+        <!-- Visitas adicionales -->
+        ${extras.map(v=>`
+          <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:7px;padding:8px 10px;margin-bottom:5px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+              <span style="font-size:10px;font-weight:700;color:#15803D">${v.tipo==="Preventivo"?"🔄 ADICIONAL PREVENTIVA":"🔧 CORRECTIVA"}</span>
+              <button onclick="removeVisitaExtra(${s.id},${mes},'${v.id}');renderProg();" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:12px;padding:0">✕</button>
+            </div>
+            <div style="font-size:12px;color:var(--text2)">${v.fecha}${v.nota?` · ${v.nota}`:""}</div>
+          </div>`).join("")}
+
+        <!-- Botón agregar visita adicional -->
+        <button onclick="abrirFormVisitaExtra(${s.id},${mes})" style="width:100%;background:none;border:1px dashed var(--border2);border-radius:7px;padding:7px;font-size:11px;color:var(--text3);cursor:pointer;font-family:inherit;margin-top:3px">+ Agregar visita adicional</button>
+      </div>`;
     });
     html+=`</div></div>`;
   });
+
   pc.innerHTML=html;
 }
-function updateFecha(sid,visita,fecha){if(fecha)setSchedDate(sid,visita,fecha);guardarLocal();renderProg();}
-function clearFecha(sid,visita){delete SCHED[schedKey(sid,visita)];A=A.map(a=>a.sede===sid&&a.visita===visita?Object.assign({},a,{fecha:gf(HOY.getFullYear(),visita-1,15)}):a);guardarLocal();renderProg();}
-function guardarTodasFechas(){
-  const visita=parseInt((document.getElementById("prog-visita")||{}).value||"0");
-  if(!visita){alert("Selecciona una visita primero");return;}
-  let guardadas=0;SEDES.forEach(s=>{const el=document.getElementById("fecha-"+s.id+"-"+visita);if(el&&el.value){setSchedDate(s.id,visita,el.value);guardadas++;}});
-  guardarLocal();alert(guardadas+" fechas guardadas");renderProg();
-}
-function programarAnoCompleto(){
-  document.getElementById("mocont").innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="mtit" style="margin:0">📅 Programar año completo</div><button style="background:none;border:none;font-size:20px;cursor:pointer" onclick="closeMo()">✕</button></div><div style="color:var(--text3);font-size:13px;margin-bottom:14px">Define el día del mes para cada visita.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">'+MESES.map((mes,i)=>{const v=i+1;return `<div style="background:var(--bg4);border-radius:8px;padding:9px 12px"><div style="font-weight:700;font-size:12px;margin-bottom:4px">V${v} — ${mes}</div><input type="number" class="fi" id="anio-dia-${v}" min="1" max="28" value="15" style="width:100%;font-size:12px"></div>`;}).join("")+'</div><div class="mbtns"><button class="bcn" onclick="closeMo()">Cancelar</button><button class="bsv" onclick="aplicarAnoCompleto()">✓ Aplicar</button></div>';
+
+function abrirFormVisitaExtra(sid, mes){
+  const s=sd(sid);const y=HOY.getFullYear();const ultimoDia=new Date(y,mes+1,0).getDate();
+  document.getElementById("mocont").innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="mtit" style="margin:0">+ Visita adicional — ${s?.n}</div>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer" onclick="closeMo()">✕</button>
+    </div>
+    <div style="color:var(--text3);font-size:12px;margin-bottom:14px">${MESES[mes]} · ${s?.c} · ${s?.adm}</div>
+    <div class="fgrid">
+      <div class="ff" style="margin:0"><label class="fl">Fecha</label>
+        <input type="date" class="fi2" id="vef" min="${y}-${String(mes+1).padStart(2,"0")}-01" max="${y}-${String(mes+1).padStart(2,"0")}-${String(ultimoDia).padStart(2,"0")}">
+      </div>
+      <div class="ff" style="margin:0"><label class="fl">Tipo</label>
+        <select class="fi2" id="vet"><option value="Preventivo">Preventiva</option><option value="Correctivo">Correctiva</option></select>
+      </div>
+    </div>
+    <div class="ff"><label class="fl">Motivo / nota (opcional)</label>
+      <input class="fi2" id="ven" placeholder="Ej: Falla en HVAC, solicitud del administrador...">
+    </div>
+    <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:7px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:#1D4ED8">
+      Se crearán automáticamente las actividades correspondientes para esta visita.
+    </div>
+    <div class="mbtns">
+      <button class="bcn" onclick="closeMo()">Cancelar</button>
+      <button class="bsv" onclick="guardarVisitaExtra(${sid},${mes})">✅ Agregar visita</button>
+    </div>`;
   document.getElementById("modal").classList.add("on");
 }
-function aplicarAnoCompleto(){
-  const y=HOY.getFullYear();let total=0;
-  MESES.forEach((mes,i)=>{const v=i+1;const el=document.getElementById("anio-dia-"+v);const dia=Math.min(28,Math.max(1,el?parseInt(el.value)||15:15));const fechaBase=y+"-"+String(i+1).padStart(2,"0")+"-"+String(dia).padStart(2,"0");SEDES.forEach(s=>{setSchedDate(s.id,v,fechaBase);total++;});});
-  closeMo();guardarLocal();alert(total+" fechas programadas");renderProg();
+
+function guardarVisitaExtra(sid, mes){
+  const fecha=document.getElementById("vef").value;
+  const tipo=document.getElementById("vet").value;
+  const nota=document.getElementById("ven").value;
+  if(!fecha){alert("Selecciona una fecha");return;}
+  addVisitaExtra(sid, mes, fecha, tipo, nota);
+  closeMo();
+  renderProg();
+  // Actualizar también la vista de actividades si está abierta
+  if(VISTA==="agenda") renderActs();
 }
+
+
 // ── CHECKLIST ─────────────────────────────────────────────────────────────────
 function clk(sid,v,cat,it){return `${sid}_v${v}_${cat}_${it}`;}
 function clChk(sid,v,cat,it){return !!CL[clk(sid,v,cat,it)];}
@@ -1333,7 +1465,7 @@ function openForm(id){
   const f=a||{titulo:"",sede:1,categoria:"Correctivo",tipo:"Correctivo",estado:"Programado",fecha:yf(HOY),costo:"",prioridad:"Alta",responsable:"Terreno Inmobiliario",notas:""};
   document.getElementById("mocont").innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mtit" style="margin:0">${a?"Editar actividad":"Nueva actividad"}</div><button style="background:none;border:none;font-size:20px;cursor:pointer" onclick="closeMo()">✕</button></div>
     <div class="ff"><label class="fl">Título</label><input class="fi2" id="fft" value="${f.titulo}" placeholder="Describe la actividad"></div>
-    <div class="fgrid"><div class="ff" style="margin:0"><label class="fl">Tienda</label><select class="fi2" id="ffs">${SEDES.map(s=>`<option value="${s.id}"${f.sede==s.id?" selected":""}>${s.n} — ${s.c}</option>`).join("")}</select></div><div class="ff" style="margin:0"><label class="fl">Tipo</label><select class="fi2" id="ffti"><option ${(f.tipo||"Correctivo")==="Preventivo"?"selected":""}>Preventivo</option><option ${(f.tipo||"Correctivo")==="Correctivo"?"selected":""}>Correctivo</option></select></div><div class="ff" style="margin:0"><label class="fl">Sistema</label><select class="fi2" id="ffc">${SIS.map(s=>s.cat).concat(["Correctivo"]).map(c=>`<option ${f.categoria===c?"selected":""}>${c}</option>`).join("")}</select></div><div class="ff" style="margin:0"><label class="fl">Estado</label><select class="fi2" id="ffe"><option ${f.estado==="Programado"?"selected":""}>Programado</option><option ${f.estado==="En progreso"?"selected":""}>En progreso</option><option ${f.estado==="Completado"?"selected":""}>Completado</option><option ${f.estado==="Cancelado"?"selected":""}>Cancelado</option></select></div><div class="ff" style="margin:0"><label class="fl">Fecha</label><input type="date" class="fi2" id="fff" value="${f.fecha}"></div><div class="ff" style="margin:0"><label class="fl">Costo COP</label><input type="number" class="fi2" id="ffc2" value="${f.costo||""}" placeholder="0"></div><div class="ff" style="margin:0"><label class="fl">Prioridad</label><select class="fi2" id="ffp"><option ${f.prioridad==="Alta"?"selected":""}>Alta</option><option ${f.prioridad==="Media"?"selected":""}>Media</option><option ${f.prioridad==="Baja"?"selected":""}>Baja</option></select></div><div class="ff" style="margin:0"><label class="fl">Responsable</label><input class="fi2" id="ffr" value="${f.responsable}"></div></div>
+    <div class="fgrid"><div class="ff" style="margin:0"><label class="fl">Tienda</label><select class="fi2" id="ffs">${SEDES.map(s=>`<option value="${s.id}"${f.sede==s.id?" selected":""}>${s.n} — ${s.c}</option>`).join("")}</select></div><div class="ff" style="margin:0"><label class="fl">Tipo</label><select class="fi2" id="ffti"><option ${(f.tipo||"Correctivo")==="Preventivo"?"selected":""}>Preventivo</option><option ${(f.tipo||"Correctivo")==="Correctivo"?"selected":""}>Correctivo</option></select></div><div class="ff" style="margin:0"><label class="fl">Sistema</label><select class="fi2" id="ffc">${SIS.map(s=>s.cat).concat(["Correctivo"]).map(c=>`<option ${f.categoria===c?"selected":""}>${c}</option>`).join("")}</select></div><div class="ff" style="margin:0"><label class="fl">Estado</label><select class="fi2" id="ffe"><option ${f.estado==="Por programar"?"selected":""}>Por programar</option><option ${f.estado==="Programado"?"selected":""}>Programado</option><option ${f.estado==="En progreso"?"selected":""}>En progreso</option><option ${f.estado==="Completado"?"selected":""}>Completado</option><option ${f.estado==="Cancelado"?"selected":""}>Cancelado</option></select></div><div class="ff" style="margin:0"><label class="fl">Fecha</label><input type="date" class="fi2" id="fff" value="${f.fecha}"></div><div class="ff" style="margin:0"><label class="fl">Costo COP</label><input type="number" class="fi2" id="ffc2" value="${f.costo||""}" placeholder="0"></div><div class="ff" style="margin:0"><label class="fl">Prioridad</label><select class="fi2" id="ffp"><option ${f.prioridad==="Alta"?"selected":""}>Alta</option><option ${f.prioridad==="Media"?"selected":""}>Media</option><option ${f.prioridad==="Baja"?"selected":""}>Baja</option></select></div><div class="ff" style="margin:0"><label class="fl">Responsable</label><input class="fi2" id="ffr" value="${f.responsable}"></div></div>
     <div class="ff"><label class="fl">Notas</label><textarea class="fi2" id="ffn" placeholder="Notas adicionales...">${f.notas||""}</textarea></div>
     <div class="mbtns"><button class="bcn" onclick="closeMo()">Cancelar</button><button class="bsv" onclick="saveAct(${id||"null"})">Guardar</button></div>`;
   document.getElementById("modal").classList.add("on");
